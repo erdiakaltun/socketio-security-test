@@ -125,13 +125,15 @@ function websocketTest($sid) {
 }
 
 // Testte kullanılacak komutlar ve payloadlar
-$commands = [
-    "shutdown",
-    "clearCache",
-    "getStatus",
-    "updateSettings",
-    "resetUsers"
-];
+$commands = ["getStatus"];
+if ($enableDestructiveTests) {
+    $commands = array_merge($commands, [
+        "shutdown",
+        "clearCache",
+        "updateSettings",
+        "resetUsers"
+    ]);
+}
 $payloads = [
     "; ls -la",
     "| whoami",
@@ -168,9 +170,11 @@ for ($i = 1; $i <= $testLoops; $i++) {
     $wsResp = websocketTest($sid);
     logMessage("🌐 WebSocket yanıtı: $wsResp");
 
-    // Sonlandırma komutu (shutdown)
-    $endResp = sendPollingCommand($sid, "shutdown");
-    logMessage("🛑 Sonlandırma komutu gönderildi. Yanıt: " . ($endResp ?: 'Boş'));
+    // Sunucu kapatma yalnızca açıkça etkinleştirildiğinde çalıştırılır.
+    if ($enableDestructiveTests) {
+        $endResp = sendPollingCommand($sid, "shutdown");
+        logMessage("🛑 Sonlandırma komutu gönderildi. Yanıt: " . ($endResp ?: 'Boş'));
+    }
 
     logMessage("✅ Test döngüsü #$i tamamlandı.\n");
 }
