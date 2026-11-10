@@ -29,6 +29,16 @@ date_default_timezone_set('Europe/Istanbul');
 $baseUrl = 'https://YOUR-SOCKET-IO-ENDPOINT/socket.io/?type=admin&EIO=4&transport=polling';
 $logFile = __DIR__ . '/socket_attack.log';
 $testLoops = 3; // Test döngüsü sayısı, ihtiyaca göre değiştirilebilir
+$enableDestructiveTests = getenv('SOCKETIO_ENABLE_DESTRUCTIVE_TESTS') === '1';
+
+// TLS doğrulaması varsayılan olarak açıktır. Yalnızca kontrollü yerel testte opt-out edin.
+function sslOptions() {
+    $insecure = getenv('SOCKETIO_INSECURE_TLS') === '1';
+    return [
+        'verify_peer' => !$insecure,
+        'verify_peer_name' => !$insecure
+    ];
+}
 
 // Log fonksiyonu
 function logMessage($msg) {
@@ -42,7 +52,7 @@ function logMessage($msg) {
 function getSID() {
     global $baseUrl;
     $context = stream_context_create([
-        "ssl"=>["verify_peer"=>false,"verify_peer_name"=>false]
+        "ssl" => sslOptions()
     ]);
     $response = file_get_contents($baseUrl, false, $context);
     if ($response === false) {
@@ -60,7 +70,7 @@ function getSID() {
 function sendPollingCommand($sid, $command) {
     global $baseUrl;
     $url = $baseUrl . '&sid=' . urlencode($sid);
-    $postData = "42[\"admin:cmd\",{\"cmd\":\"$command\"}]";
+    $postData = '42' . json_encode(['admin:cmd', ['cmd' => $command]], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     $opts = [
         "http" => [
@@ -99,7 +109,7 @@ function websocketTest($sid) {
                 'Origin' => 'https://example.com'
             ],
             'context' => stream_context_create([
-                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
+                'ssl' => sslOptions()
             ])
         ]);
         // Socket.io protokolü 40 ile bağlantı başlatılır
